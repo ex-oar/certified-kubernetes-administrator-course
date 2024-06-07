@@ -243,7 +243,6 @@
               after we put this pod on it 
 - we can customize everything and even add our own scheduler
 - scheduler also looks at: taints, tolerations, node selectors, affinity 
- 
 - same as kube-controller-manager, same as kube-apiserver, same as etcd, 
   if you installed cluster via kubadm, kube-scheduler lives as a pod on the 
   master node. cfg is here:
@@ -269,5 +268,97 @@
 - `ps -aux | grep kubelet`
 
 ## 20. kube-proxy
+
+- is a process that runs on each node in the cluster
+- job is to watch for new services and then create rules for that service
+  on each node
+- iptables rules
+- same as kube-scheduler, same as kube-controller-manager, same as kube-apiserver, 
+  same as etcd, if you installed cluster via kubadm, kube-scheduler lives as a pod 
+  on the master node (but all other nodes as well). it is actually deployed
+  as a daemonset --> a single pod is _always_ deployed to each node in the cluster.
+  - `k get pods -n kube-system` 
+  - `k get daemonset -n kube-system`
+
+## 21. recap - pods
+
+- pod is single instance of an app
+- pod is the smallest obj you can create in k8s
+- multi-ctr pods are rarely used
+- even if you have one ctr, k8s makes you put it in a pod
+
+## 22. pods with yaml
+
+```
+apiVersion:
+kind:
+metadata:
+spec:
+```
+
+## 23. demo - pods with yaml
+
+## 24. practice test introduction
+
+## 25. demo: accessing labs
+
+support@kodekloud.com
+
+## 26. course setup - accessing the labs
+
+- [kodekloud lab env](https://uklabs.kodekloud.com/courses/labs-certified-kubernetes-administrator-with-practice-tests/)
+- [kodekloud dashboard](https://learn.kodekloud.com/user/dashboard)
+
+## 27. practice test - pods
+
+## 28. practice test - solution
+
+- instead of doing a describe on every pod to get all images, just do `-o wide`
+  `kubectl get pods -o wide`
+- in addition to doing redis.yaml directly ("declaratively"), we can also do it
+  "imperatively" with dry-run:
+  `kubectl run redis --image=redis123 --dry-run=client -o yaml > redis.yaml`
+- instead of editing the yaml to change image name, remember `kubectl edit`
+
+## 29. recap - replicasets
+
+- replicationcontroller - old way (see other notes)
+- helps us run multiple instances of our app (pod) in cluster
+- should use RC even with one pod in case it fails
+- helps us with scaling and LB
+- spans N nodes
+- replicaset is replacing replicationcontroller
+- see [replicationcontroller yaml](replicationcontroller.yaml) and [pod yaml](pod.yaml)
+  - note: `replicationcontroller.yaml[.spec.template] === pod.yaml[.metadata+]`
+- if you get an error like 
+```
+error: unable to recognize "replicaset-definition.yaml": no matches for /, Kind=ReplicaSet"
+```
+it's because the apiVersion is wrong. if you don't know what api version it 
+should be ... do `k explain replicaset` 
+- replicaset definition is same as replicationcontroller definition, except that
+  replicaset requires a "selector" definition ... compare 
+  [replicationcontroller yaml](replicationcontroller.yaml) and [replicaset yaml](replicaset.yaml)
+  - why do we need such a selector? RS can manage Pods that were created outside
+    of the RS.
+  - actually, for RC, you can also have a "selector", but it is not required as
+    it is for RS. when omitted, it uses the same labels as in pod defn.
+- RS wants to make sure we run N copies at any given time
+  - RS is a process that monitors pods, that's why it needs labels - to filter
+    out which pods to watch
+- scale RS:
+  - way 1: update "replicas: N" in rs.yaml, then `k replace -f rs.yaml`
+  - way 2: `k scale --replicas=N -f rs.yaml`
+  - way 3: `k scale --replicas=N replicaset myapp-replicaset`
+  - way 4: `k edit ...` ?
+
+## 30. practice test - replicasets
+
+## 31. practice test - replicasets solution
+
+- after you edit a RS, the pods do not auto-delete ... you need to delete the pods
+  yourself, then the RS will regen them with the new defn.
+
+## 32. deployments
 
 - 
