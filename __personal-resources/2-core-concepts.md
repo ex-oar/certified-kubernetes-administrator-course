@@ -1,3 +1,5 @@
+# Core Concepts (Section 2)
+
 ## 11. k8s arch
 
 - worker nodes are the ships that actually transport the cargo
@@ -360,5 +362,68 @@ should be ... do `k explain replicaset`
   yourself, then the RS will regen them with the new defn.
 
 ## 32. deployments
+
+- different to RS in that RS updates everything at once, which could cause 
+  disruption to end users ... Deployment does _rolling update_. can also do
+  rollback.
+- also different in that you can make multiple changes, pause, resume, roll out 
+  everything at once.
+- [Deployment[ReplicaSet[Pod[Ctr]]]]
+- yaml defn _exactly the same_ as RS, just kind = Deployment instead
+- deployment creates RS
+
+## 33. certification tip
+
+- use `kubectl run` as much as possible, instead of hand-writing yaml defns:
+  - `kubectl run nginx --image=nginx`
+  - `kubectl run nginx --image=nginx --dry-run=client -o yaml`
+  - `kubectl create deployment --image=nginx nginx`
+  - `kubectl create deployment --image=nginx nginx --dry-run=client -o yaml`
+  - `kubectl create deployment --image=nginx nginx --dry-run=client -o yaml > deployment.yaml`
+  - `kubectl create deployment --image=nginx nginx --replicas=4 --dry-run=client -o yaml > deployment.yaml`
+- bookmark [kubectl usage conventions](https://kubernetes.io/docs/reference/kubectl/conventions/)
+
+## 34. practice test - deployments
+
+## 35. solution - deployments
+
+## 36. services
+
+- like a virtual server inside the node
+- `NodePort`: a k8s obj that listens to a port on a node, fwd-ing traffic from that port to 
+  a port on our pod (our app) ... port must be 30000..32767
+  - if you don't provide a targetPort in the defn, it is assumed == port in the defn
+  - if you don't provide a nodePort, it will randomly assign one
+  - we use labels and selectors to group the Pods the Service will use ... labels 
+    in Service defn [.spec.selector] must === labels in Pod defn [.metadata.labels]
+  - Service uses a "Random" algo w/ session affinity, and so acts as a built-in LB
+- `ClusterIP`: (= default svc type) service creates a virtual ip inside cluster
+- `LoadBalancer`
+
+![nodeport](nodeport.png)
+![nodeport2](nodeport2.png)
+
+## 37. services cluster ip
+
+- app usually has diff types of pods hosting diff parts of the app:
+  - N pods for: frontend (ex: python web server)
+  - N pods for: backend services
+  - N pods for: (k,v) store (ex: redis)
+  - N pods for: persistent db (ex: mysql)
+- these diff pods all need to talk to eachother - frontend pods need to talk to
+  backend pods, backened pods need to talk to persistent db pods, etc.
+- but pods can go down and be replaced any time ... 
+- what's the best way to do traffic between these diff app tiers?
+- the IP addys are not static --> can't rely on IP addy to comms
+- and - when frontend pod wants to talk to backend, which pod does it talk to - 
+  how do we make that decision?
+- service groups them together and provides a single iface for access
+- in this case, we have 3 services: "backend" for accessing backend pods,
+  "redis" service for accessing redis pods, "db" service for accessing mysql
+- each tier is disconnected (decoupled) and can scale as needed  
+
+![clusterip](clusterip.png)
+
+## 38. services - loadbalancer
 
 - 
