@@ -426,4 +426,18 @@ should be ... do `k explain replicaset`
 
 ## 38. services - loadbalancer
 
-- 
+- could add a vm and cfg haproxy or nginx lb - but this is a lot of maint overhead
+- instead, integrate with native LB at CSP 
+- only works with supported CSP (GCP, AWS, Azure) ... only diff in defn file is
+  [.spec.type] = LoadBalancer
+- if you set [.spec.type] to LB and it's an unsupported CSP, then it has the 
+  effect of creating a NodePort Service type.
+
+## 39. practice test - services
+
+- endpoints = how many pods is this svc directing traffic to
+- [k8s service docu](https://kubernetes.io/docs/concepts/services-networking/service/#defining-a-service)
+
+## 40. solution - services
+
+## 41. namespaces
