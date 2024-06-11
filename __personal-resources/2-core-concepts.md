@@ -441,3 +441,102 @@ should be ... do `k explain replicaset`
 ## 40. solution - services
 
 ## 41. namespaces
+
+- connecting to a service in namespace, call it by it's name:
+  `mysql.connect("db-service")`
+- connecting to a service in another namespace, call it by:
+  `mysql.connect("db-service.dev.svc.cluster.local")`
+   - {name}.{namespace}.{service}.{domain}
+- [.metadata.namespace]
+- `$k config set-context $(kubectl config current-context) --namespace=dev`
+- we use diff contexts to manage multiple clusters in multiple envs from the same place
+
+![namespaces-1](namespaces-1.png)
+![namespaces-2](namespaces-2.png)
+![resourcequota](resourcequota.png)
+
+## 42. practice test - namespaces
+
+## 43. solution - namespaces
+
+## 44. [imperative vs declarative](https://kubernetes.io/docs/tasks/manage-kubernetes-objects/)
+
+- imperative:  do Y to give me X
+  - `kubectl [run, create, expose, delete, scale, set, create, replace]`
+  - `k edit` doesn't edit the orig yaml ... if you later edit + reapply that yaml, your change (edit) is gone
+    - to get around this problem, instead edit the manifest directly, and replace with `k replace -f something.yaml`
+    - think about also: you lose some of change history when you `k edit`
+    - can also `k replace --force -f something.yaml`
+  - drawbacks:
+    - run once in user session ... hard for someone else to figure out how the obj was created
+    - can make a mistake when typing it Nx
+    - can be long to write (ex: creating a multi-container pod)
+- declarative: give me X
+  - `kubectl apply -f something.yaml` <-- will create if not exists, whereas replace will error out if not exists
+    - ^ `k apply` vs `k create` and `k replace`
+- [kubectl reference](https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands)
+
+## 45. certification tips - imperative commands with kubectl
+
+- `kubectl expose pod redis --port=6379 --name redis-service --dry-run=client -o yaml`
+  - create a svc of type clusterip exposing redis on port 6379
+  - pod's labels used as selectors
+- `kubectl create service clusterip redis --tcp=6379:6379 --dry-run=client -o yaml`
+  - same, but assume selectors are "app=redis" 
+- `kubectl expose pod nginx --type=NodePort --port=80 --name=nginx-service --dry-run=client -o yaml`
+  - create a svc of type nodeport exposing nginx on port 80
+- `kubectl create service nodeport nginx --tcp=80:80 --node-port=30080 --dry-run=client -o yaml`
+  - same
+
+## 46. practice test - imperative commands
+
+## 47. solution - imperative commands
+
+- 
+```
+controlplane ~ ➜  kubectl run nginx-pod --image=nginx:alpine
+pod/nginx-pod created
+
+controlplane ~ ➜  kubectl run redis --image=redis:alpine --labels=tier=db
+pod/redis created
+
+controlplane ~ ✖ kubectl expose pod redis --port 6379 --name redis-service
+service/redis-service created
+
+controlplane ~ ➜  kubectl create deployment webapp --image=kodekloud/webapp-color --replicas=3
+deployment.apps/webapp created
+
+controlplane ~ ➜  kubectl run custom-nginx --image=nginx --port=8080
+pod/custom-nginx created
+
+controlplane ~ ➜  kubectl create ns dev-ns
+namespace/dev-ns created
+
+controlplane ~ ➜  kubectl create deployment redis-deploy --image=redis --replicas=2 -n dev-ns
+deployment.apps/redis-deploy created
+
+# could do the next one by first kubectl run pod then expose service, as above
+# but one step method is:
+controlplane ~ ➜  kubectl run httpd --image=httpd:alpine --port=80 --expose=true
+service/httpd created
+pod/httpd created
+# you can look in kubectl run --help to see the --expose option 
+```
+
+## 48. kubectl apply command
+
+- kubectl apply checks if something exists, creates it if not ... but what it creates
+  is the "last applied configuration", which is a json file (stored on the live object configuration as [.metadata.annotations...last-applied-configuration]) <-- this _only_ happens with k apply, not with k run or k create ...
+- now, whenever we do something to this file in the future, it compares:
+  - local "something.yaml"
+  - "last applied configuration"
+  - "live object configuration" (with the status, etc.)
+
+  to determine what to do. see [merging changes to primitive fields](https://kubernetes.io/docs/tasks/manage-kubernetes-objects/declarative-config/#merging-changes-to-primitive-fields) for more info 
+
+![k-apply](k-apply.png)
+
+## 49. here's some inspiration to keep going
+
+## 50. a quick reminder
+
