@@ -53,4 +53,73 @@ nginx   1/1     Running             0          8s
 
 ## 56.  labels and selectors
 
+- used to group and select objs
+- @pod spec: [.metadata.labels] then `k get pods --selector key=val`
+- @RS  spec: [.metadata.labels] === [.spec.template.metadata.labels] because 
+  the [.spec.template] is ofc a pod spec for pods in that RS (?)
+```
+The ReplicaSet "replicaset-1" is invalid: spec.template.metadata.labels: Invalid value: map[string]string{"tier":"nginx"}: `selector` does not match template `labels`
+```
+  - [.metadata.labels] are there for _other_ objs to discover the RS
+  - [.spec.selector.matchLabels] is for the RS to know what pods it controls
+    by matching these labels on pods. so:
+    RS[.spec.selector.matchLabels] === Pod[.metadata.labels]
+- same for Service
+- annotations are for other generic metadata [.metadata.annotations]
+
+## 57. practice test - labels and selectors
+
+- `kubectl get pods --selector=env=dev --no-headers | wc -l`
+- `kubectl get pods --selector=env=prod,bu=finance,tier=frontend`
+
+## 58. solution: labels and selectors
+
+## 59. taints and tolerations
+
+- restrict what pods go on what nodes
+- imagine a person puts on bug spray - this person is a _node_ and the spray is a _taint_ 
+  - the bug (a _pod_) is intolerant to the smell, so does not land on the person (_node_)
+  - but - there could be other bugs that aren't affected by this particular spray,
+    so they land on the person anyway. these bugs (_pod_s) _tolerate_ (are unaffected by) the _taint_ (bug spray)
+  - so two things detm if a pod can be placed on a node: 
+    - the node's taint
+    - the pod's toleration to that particular node's taint
+- example
+  - by default, we'll try to equally spread pods across nodes
+  - now assume dedicated resources on node 1
+    - this could be for a particular use case, app, etc.
+    - so we want only pods that belong to that particular use case (app) to be placed on node 1
+      - first, place a taint on node 1 to prevent _all pods_ from being scheduled on that node
+      - by default, pods don't have tolerations, so by default, no pods can tolerate that taint
+      - so now we place a toleration on particular pods ... now scheduler will place only those
+        particular pods with tolerations that match the taint on the node on the node
+- `kubectl taint nodes <node-name> key=val:<taint-effect>`
+  - <taint-effect> is what happens with pods that don't tolerate the taint. 3 effects:
+    - `NoSchedule`
+    - `PreferNoSchedule` - best effort don't place this pod on this node
+    - `NoExecute` - default - don't put new pods without tolerations on this node, and existing pods without toleration evicted. this could happen, for example, if a taint was applied to a node after it was already humming along with pods on it.
+    - example:
+      - `kubectl taint nodes node1 app=blue:NoSchedule`
+- to add the matching toleration to a pod:
+```
+...
+spec:
+  ...
+  tolerations:
+  - key: "app"
+    value: "blue"
+    operator: "Equal"
+    effect: "NoSchedule"
+...
+```
+- taints and tolerations however, do _not_ tell a pod to go to a particular node.
+  a pod with a toleration for node1 may end up going to node2. all the taint and
+  toleration does is say the pod _may_ go to node1. it's not guaranteed.
+- to do that ^^^^, you need _node affinity_.
+- control plane node doesn't get pods scheduled because k8s auto taints it on
+  creation to prevent putting pods there. you could change this, but it is not good practice.
+  - `k describe node kubemaster | grep Taint`
+    - gives: "Taints: node-role.kubernetes.io/master:NoSchedule"
+
+## 60. practice test - taints and tolerations
 
