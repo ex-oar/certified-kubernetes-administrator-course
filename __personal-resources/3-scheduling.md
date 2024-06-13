@@ -200,3 +200,45 @@ spec:
 
 ## 67. resource requirements and limits
 
+- need to add `[.spec.containers.resources]` see [pod2.yaml](pod2.yaml) for an example
+- "cpu: 1" means one of:
+  - 1 aws vcpu
+  - 1 gcp core
+  - 1 azure core
+  - 1 hyperthread
+- "cpu: 0.1" is the lowest, and is same as "cpu: 100m" (you can actually go to "1m")
+- there _is_ a difference between "G" (1,000,000,000 bytes) and "Gi" (1,073,741,824 bytes) when specifying memory
+- if a pod (ctr) tries to use more than its _CPU_ limits, it goes into `THROTTLE` state - a pod (ctr)  _cannot_ use more CPU than its limit
+- however, a pod (ctr) _can_ use more MEMORY than its limits ... in this case, pod goes into `TERMINATE` with `OOM error`. the only way to free up that memory is to kill the pod.
+- default behavior is any pod (ctr) can use as many resources on a node and suffocate other pods.
+  - so how do we ensure each ctr has some defaults set?
+    - `LimitRange` object ... see [limit-range](limit-range.yaml)
+    - is a namespace-level defn ^^^^
+    - affects pods _at creation_, does NOT affect _existing_ pods
+- if you set `[.spec.containers.resources.limits]` but NOT `[.spec.containers.resources.requests]`, then requests == limits
+- if you set both ^^^^ and one pod (ctr) is using its limit while another pod (ctr) is not using its limit, then maybe we'd like to allow the pod at its limit to use some of the excess the other pod is not using (this is basically there is space on the node, but we don't let a ctr use it anyway --> underutilization)
+- this is where setting `requests` but not `limits` comes in. <-- might be the ideal case, as it ensures everyone gets at least what they ask for. 
+![behavior-requests](behavior-requests.png)
+![behavior-requests2](behavior-requests2.png)
+- control total resources that can be consumed by apps deployed in the cluster using `ResourceQuota`s. this is also namespace-level. see [resourcequota](resourcequota.yaml)
+![resourcequota](resourcequota.png)
+
+## 68. a quick note on editing pods and deployments
+
+- there are certain fields on a pod you cannot edit once it is running. you can NOT edit:
+  - `[.spec.containers[*].image]`
+  - `[.spec.initContainers[*].image]`
+  - `[.spec.activeDeadlineSeconds]`
+  - `[.spec.tolerations]`
+  - env vars, service accounts, resource limits
+- if you _must_ edit them, three options:
+  - `k edit pod <pod-name>` <-- this will fail, but will store your work in a tmp file. you can delete the pod, then recreate it using this tmp file
+  - `k get pod <pod-name> -o yaml > <new-pod-name>.yaml`. you can delete the pod, then recreate it using this yaml
+    - could do `k delete pod <pod-name>` && `k apply -f <pod-yaml>` or just `k replace --force -f <pod-yaml>`
+  - deployment always delete and recreate pods when you edit the pod template. so edit any field in the deployment and all good. 
+
+## 69. practice test - resource requirements and limits
+
+## 70. solution: resource limits
+
+## 71. daemonsets
