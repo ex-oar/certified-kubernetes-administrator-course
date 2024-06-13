@@ -123,3 +123,80 @@ spec:
 
 ## 60. practice test - taints and tolerations
 
+## 61. solution - taints and tolerations
+
+- remove a taint either by `k edit ...` or ... use the normal taint command but add '-' to the end:
+  `k taint node <node-name> node-role.kubernetes.io/master-NoSchedule-`
+
+## 62. node selectors
+
+- imagine you have 3 nodes, 2 are "normal", one is "big" ... you have diff kinds of workloads
+  running in cluster. you want workloads requiring more resources to run on the "big" node.
+- two ways:
+  - @ pod defn: [.spec.nodeSelector] === [.metadata.labels] @ node defn
+    - one way to label node: `k label nodes <node-name> key=val`
+  - node affinity
+
+## 63. node affinity
+
+- if you need more complex node selection for a pod, you can't use labels ... 
+  ex: "<large> OR <medium>", "NOT <label>"
+- whole goal of affinity is to ensure particular pods go to particular nodes
+- ex: ensure pod goes to nodes labeled "size=Large":
+  - with nodeSelector:
+    - [.spec.nodeSelector] = "size: Large"
+  - with affinity:
+    - 
+```
+...
+spec:
+  ...
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution: # = what is scheduling behavior when no node has this label 
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: size
+            operator: In # can also use "NotIn", "Exists" (just checks if this label is on the node, don't care the value), etc. 
+            values:
+            - Large      # if "Large" OR "Medium", just add another el to this array "- Medium"
+  ...
+...
+```
+- if no node has the label, or it changes after the pod is already on the node,
+  scheduler behavior is detmd by [spec.affinity.nodeAffinity."required..."]:
+  - requiredDuringSchedulingIgnoredDuringExecution
+  - preferredDuringSchedulingIgnoredDuringExecution
+  - requiredDuringSchedulingRequiredDuringExecution # planned
+- "DuringScheduling" = when pod !exist yet
+- "Preferred" = if we _must_ run the workload, even if affinity doesn't match 
+  ... so running the workload is more important than affinity:
+    - = try your best to put the pod on a matching node; if you can't find one, put it anywhere
+- "DuringExecution" = when pod is running and a change is made that affects affinity
+  - ex: admin removes node label when pod requiring that label is already on that node
+- "Ignored" ^^^^ means nothing will happen
+- ![node-affinity](node-affinity.png)
+
+## 64. practice test - node affinity
+
+## 65. solution - node affinity
+
+- `k label node node01 colo=blue`
+
+## 66. taints and tolerations vs node affinity
+
+- ex:
+  - 3 nodes: blue, red, green
+  - 3 pods: blue, red, green
+  - we want the pods to go to the matching colored nodes
+  - there are other colored pods and nodes - we don't want blue, red, or green going to any of those
+    - we could taint the nodes, and toleration the pods 
+      - but: this does not guarantee blue, red, or green will NOT go on the other colored nodes
+        red, for ex, could go onto another node which does not have a taint set
+    - so we use affinity ... however, this has the opposite problem:
+      it does not guarantee that other _pods_ are NOT placed on blue, red, or green nodes
+      - the solution is to use BOTH taints and tolerations and node affinity:
+- ![node-affinity-toleration](node-affinity-toleration.png)
+
+## 67. resource requirements and limits
+
