@@ -1,4 +1,4 @@
-# Core Concepts (Section 2)
+# [Core Concepts (Section 2)](Kubernetes-CKA-0100-Core-Concepts.pdf)
 
 ## 11. k8s arch
 
