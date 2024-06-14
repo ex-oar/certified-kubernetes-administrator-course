@@ -242,3 +242,84 @@ spec:
 ## 70. solution: resource limits
 
 ## 71. daemonsets
+
+- DS is like RS in that it helps you deploy multiple instances of pods
+- diff is it runs _one_ copy of your pod in each node
+- when a new node is added to the cluster, a pod from the daemonset is auto-added to that node ... and the pod goes away if the node is removed
+- useful for logging, monitoring, etc.
+![daemonset-1](daemonset-1.png)
+![daemonset-2](daemonset-2.png)
+- `kube-proxy` is a good use of DS ... anything that requires an agent to deployed to each node in the cluster
+  is a good case for DS ... like networking:
+![daemonset-3](daemonset-3.png)
+- DS.yaml === RS.yaml (except for Kind)
+- question: how does DS work in the presence of node taints?
+  - you bypass the work the scheduler does by simply setting the `nodeName` on the pod spec (<= K8s v1.12)
+  - now: K8s uses NodeAffinity and default scheduler
+- [example DS](daemonset.yaml)
+
+## 72. practice test - daemonsets
+
+## 73. solution - daemonsets
+
+- two ways to create a DS (there is no `k create daemonset` for some reason):
+  - copy + mod the example from the [k8s docu](https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/)
+  - or, since DS is so similar to Deploy, dry-run create a deploy from cli and mod the resultant yaml:
+    - `k create deployment elasticsearch -n kube-system --image=k8s.gcr.io/fluentd-elasticsearch:1.20 --dry-run=client -o yaml > deployment.yaml`
+      - now edit deployment.yaml, change `kind`, remove `replicas` (DS don't have replicas), remove `strategy` and remove `status`
+
+## 74. static pods
+
+- the normal case:
+![k8s-arch-3](k8s-arch-3.png)
+- kubelet could manage a node independently (go back to ship analogy: only one ship at sea, no command center - can that ship keep floating - yes.)
+- but if no kube-apiserver, how does the kubelet on the lonely pod know the pod specs to build?
+  - you can configure the kubelet to look in `/etc/kubernetes/manifests` to find `pod.yaml`s ...
+    - ^^ that dir is configurable (so could be anywhere on the host), and passed in as an option to the kubelet service:
+      - `--pod-manifest-path=/some/dir`
+      - OR, you can specify in the kubelet service cfg a second config file for it to look for those options:
+        - `--config=kubeconfig.yaml`
+        - and in kubeconfig.yaml you have: `staticPodPath: /etc/kubernetes/manifests`
+  - so the kubelet is acting as controller here ... it periodically will check the contents of those files and apply changes ... if something goes down, it will bring it back up
+  - remove a file from that dir, pod is deleted
+- ☝️are `static pods`.
+- the static pod case:
+![static-pod](static-pod.png)
+- so check:
+  - option pod manifest path in kubelet service file
+  - if not there look for the config option and id the file used as the cfg file
+  - and then in cfg file, look for staticPodPath option.
+- _NOW_, as we don't have a k8s cluster in this case, we can't use kubectl ... but we do have CRE on the node, so we can use `docker` or `crictl` or `nerdctl` commands
+  - `docker ps` | `crictl ps` | `nerdctl ps`, depending on the container runtime we are using
+- `kubelet` can take requests from different sources when creating pods ... so you could create static pods and use
+kube-apiserver to create normal pods, on the same node. in this case, kube-apiserver _does_ still know about the static
+pods. this is because the kubelet reports back what is going on, as long as there is someone there to hear what he's
+saying. so kubelet will let kube-apiserver know he's got static pods.
+  - however, you cannot do some normal things, because kube-apiserver in this case is operating as ro mirror. cannot
+  edit or change anything. that can only be done through the manifest file on the node that the static pod lives on.
+  hence the word "static".
+- so why use static pods? 
+  - since they are not dependent on the controlplane, you could use static pods to deploy the components of the
+  controlplane itself as pods on nodes. this is how the kubeadmin tool sets up the pods in a cluster. this is why you
+  see the controlplane components as pods when you do:
+    - `k get pods -n kube-system` <-- these are static pods.
+- diff between static pods and daemonsets:
+  - kubescheduler ignores them both
+![static-pod-v-ds](static-pod-v-ds.png)
+
+## 75. practice test - static pods
+
+- static pods will always have a name with `-<node-name>` appended to them:
+  - so you can look for them with: `k get po -A -o wide`
+- another way to tell is to get the pod and look for the ownerReferences ... if the `kind: Node`:
+  - `k get pod <pod-name> -n kube-system -o yaml` ...
+    - the owner of a _non_ static pod will be, for example, a RS.
+
+## 76. solution - static pods
+
+- figure out where path of the dir holding static pod defn files is:
+  - way one: `cat /var/lib/kubelet/config.yaml` grep for "staticPodPath"
+- `k run static-busybox --image=busybox --dry-run=client -o yaml --command -- sleep 1000 > static-busybox.yaml`
+  - ☝️ important: never put any kubectl options _after_ `command` ...
+
+## 77. multiple schedulers
