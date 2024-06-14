@@ -322,4 +322,26 @@ saying. so kubelet will let kube-apiserver know he's got static pods.
 - `k run static-busybox --image=busybox --dry-run=client -o yaml --command -- sleep 1000 > static-busybox.yaml`
   - ☝️ important: never put any kubectl options _after_ `command` ...
 
-## 77. multiple schedulers
+## 77. [multiple schedulers](https://kubernetes.io/docs/tasks/extend-kubernetes/configure-multiple-schedulers/)
+
+- you can have custom scheduler(s) running same time as k8s scheduler, and you can tell pods
+  and deployments to use particular schedulers
+  - @ pod defn: `[.spec.schedulerName]`
+    - if scheduler not cfgd correctly, pod will stay PENDING
+- default k8s scheduler is called `default-scheduler`, but you can cfg this in scheduler-config.yaml
+- you can deploy additional schedulers as services or, the kubeadm way, as pods:
+
+![additional-scheduler-1](additional-scheduler-1.png)
+![additional-scheduler-2](additional-scheduler-2.png)
+
+- leaderElect is for HA setup. in this case, multiple controlplane nodes and multiple schedulers
+- you can see which scheduler acted on which pod thru the events:
+  - `k get events -o wide` <-- look at "SOURCE" column
+- to check the logs of the custom scheduler:
+  - `k logs my-custom-scheduler --name-space=kube-system`
+
+## 78. practice test - multiple schedulers
+
+- see examples in [custom-scheduler](custom-scheduler)
+
+## 79. solution - practice test - multiple schedulers
