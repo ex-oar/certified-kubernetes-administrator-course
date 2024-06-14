@@ -345,3 +345,68 @@ saying. so kubelet will let kube-apiserver know he's got static pods.
 - see examples in [custom-scheduler](custom-scheduler)
 
 ## 79. solution - practice test - multiple schedulers
+
+- `k create configmap my-scheduler-config --from-file=/custom-scheduler/my-scheduler-config.yaml -n kube-system`
+
+## 80. configuring scheduler profiles
+
+- 
+```
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: high-priority
+value: 1000000 # <-- very high, push pod to top of scheduler queue
+globalDefault: false
+description: "This priority class should be used for XYZ service pods only"
+```
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: simple-webapp-color
+spec:
+  priorityClassName: high-priority 
+  containers:
+  - name: simple-webapp-color
+    image: simple-webapp-color
+    resources:
+      requests:
+        memory: "1Gi"
+        cpu: 10
+```
+
+- remember the scheduling algo:
+  - 1. [sort]    the queue by scoring pods on the queue
+  - 2. [filter]  the queue by filtering out nodes that can't run _this_ pod
+  - 3. [scoring] the nodes based on how many resources, etc. they will have _after_ scheduling _this_ pod 
+                 the node with the most free space _after_ the pod would be put on it gets a higher score.
+  - 4. [binding] now the pod is bound to the node
+- all of those 4 steps are accomplished using plugins:
+  - 1. uses a `PrioritySort` plugin
+  - 2. uses a `NodeResourcesFit`, `NodeName` (checks if a nodeName is set in the pod spec), and `NodeUnscheduleable`, etc. plugins
+  - 3. also uses a `NodeResourcesFit` plugin (so one plugin may be used in multiple scheduling steps) ... also can use
+       `ImageLocality` plugin, etc. 
+  - 4. uses `DefaultBinder` plugin
+- there are ofc extension points at each stage so that you can write your own plugins - those plugins above all connect
+already to these extensions.
+  - there are additional extension points like: preFilter, postFilter, preBind, postBind, etc.
+![scheduler-extension](scheduler-extension.png)
+- multiple schedulers redux:
+  - if we have N schedulers with N diff config files, they run as services and it's extra overhead to maintain ...
+    - but worse: they could run into race conditions while trying to make scheduling decisions
+      scheduler1 could schedule pod1 on node1 without knowing that scheduler2 is also scheduling pod1 on node1 at the
+      same time. this led in k8s 1.18 to allowing multiple profiles on a single scheduler ... so you could just
+      do one scheduler with multiple profiles ... each profile can have a diff scheduler name ... now multiple
+      schedulers are run in the same binary, as opposed to multiple binaries. it's like multiple schedulers without the
+      overhead.
+![scheduler-profiles-1](scheduler-profiles-1.png)
+- we can under each scheduler profile enable and disbale certain plugins:
+![scheduler-profiles-2](scheduler-profiles-2.png)
+
+## 81. references
+[Scheduler code hierarchy overview](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-scheduling/scheduling_code_hierarchy_overview.md)
+[Advanced Scheduling in Kubernetes](https://kubernetes.io/blog/2017/03/advanced-scheduling-in-kubernetes/)
+[How does the Kubernetes scheduler work?](https://jvns.ca/blog/2017/07/27/how-does-the-kubernetes-scheduler-work/)
+[How does Kubernetes' scheduler work?](https://stackoverflow.com/questions/28857993/how-does-kubernetes-scheduler-work)
