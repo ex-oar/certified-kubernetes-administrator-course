@@ -154,6 +154,65 @@ and you have a pod defn file using that image with the following: [.spec.contain
     because what is in [.spec.containers[N].command] overrides what is in Dockerfile.ENTRYPOINT.
 - `k run <pod-name> --image=<image-name> -- <arg1> <arg2>`
 - `k run <pod-name> --image=<image-name> --command -- <cmd> <arg>`
+  - ☝️ the `--` after the `--image=<image-name>` separates what are kubectl options from cmds/options to be run inside the ctr:
+    - and `--command -- <cmd>` will override the command the ctr will run with some other command
+- `k run webapp-green --image=kodekloud/webapp-color -- --color green`
 
 ## 100. configure environment variables in applications
+
+- [.spec.containers[N].env.{name|value}]
+- ex:
+  - 
+```
+$ docker run -e APP_COLOR=pink simple-webapp-color
+...
+...
+spec:
+  containers:
+  - name:
+  ...
+  env:
+    - name: APP_COLOR
+      value: pink           # _directly_ specify the env var value
+    - name: APP_COLOR_2
+      valueFrom: 
+        configMapKeyRef:    # specify env var value from _configMap_
+    - name: APP_COLOR_3
+      valueFrom: 
+        secretKeyRef:       # specify env var value from _secret_
+...
+```
+
+## 101. configuring configmaps in applications
+
+- once you have a lot of pod defn files, it can be a pain to maintain the direct vals everywhere,
+  so we can take it out into _central_ config files (ConfigMap).
+- imperatively: two ways:
+  - `k create configmap app-config --from-literal=APP_COLOR=blue --from-literal=<key>=<value> ...`
+  - create a file with k,v pairs in it, one per line, then create ConfigMap from that file: `k create configmap app-config --from-file=app_config.properties`
+- declaratively:
+```
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:               # 'data' instead of 'spec'
+  APP_COLOR: blue
+  APP_MODE: prod
+```
+  - one pattern is to create a diff ConfigMap for diff parts of the app: app-config, mysql-config, redis-config, etc.
+  - then, inject it into the pod defn with [.spec.containers[N].envFrom[N]], like so:
+```
+...
+spec:
+  containers:
+  ...
+    envFrom:
+      - configMapRef:
+        name: app-config
+...
+```
+
+## 102. practice test: environment variables
+
 
