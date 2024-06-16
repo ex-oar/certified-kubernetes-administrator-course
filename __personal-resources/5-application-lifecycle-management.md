@@ -215,4 +215,27 @@ spec:
 
 ## 102. practice test: environment variables
 
+## 103. solution - environment variables
+
+## 104. configure secrets in applications
+
+- `k create secret generic app-secret --from-literal=DB_Host=mysql --from-literal=DB_User=root --from-literal=DB_Pass=passwd` 
+- `k create secret generic app-secret --from-file=app_secret.properties`
+- yaml defn looks exactly like a ConfigMap, with 'data' instead of 'spec' ... diff is we don't want secrets,
+  which contain sensitive info, in plain text ... so we store it encoded instead:
+  - `echo -n 'passwd' | base64` --> 'cGFzd3Jk' <-- this is the value we put into the yaml defn
+    - ... but ... this is easy to decode: `echo -n 'cGFzd3Jk' | base64 --decode`, so how is this useful in hiding data?
+- inject into pod defn same way as cfgmap, except [.spec.containers[N].envFrom] will be `secretRef` instead of configMapRef
+- _secrets in pods as volumes_ (can do this with configmaps too)
+  - in this case, each key in the volume is created as a file with key as filename, and the file contents are the values
+- _notes on secrets_
+  - they are _NOT_ encrypted, only _encoded_. <-- so don't check secret defn files into GitHub ...
+  - nothing in etcd is encrypted by default, which means secrets stored in etcd are not encrypted ... to fix this,
+    enable _encryption at REST_: [encrypting secret data at rest](https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/).
+    - you can encrypt particular things, like only secrets, whatever.
+  - anyone who can create pods/deployments in the same namespace can access the secrets ... so use RBAC to 
+    cfg POLP
+  - best thing is probably to use a 3rd-party secret provider like Vault. Now secrets are not stored in etcd, but in Vault.
+
+## 105. a note about secrets!
 
