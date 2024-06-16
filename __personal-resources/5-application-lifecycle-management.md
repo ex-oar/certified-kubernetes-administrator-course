@@ -231,11 +231,26 @@ spec:
 - _notes on secrets_
   - they are _NOT_ encrypted, only _encoded_. <-- so don't check secret defn files into GitHub ...
   - nothing in etcd is encrypted by default, which means secrets stored in etcd are not encrypted ... to fix this,
-    enable _encryption at REST_: [encrypting secret data at rest](https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/).
-    - you can encrypt particular things, like only secrets, whatever.
+    enable _encryption at REST_ to store secrets in etcd encrypted: 
+      - [encrypting secret data at rest](https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/).
+      - you can encrypt particular things, like only secrets, whatever.
   - anyone who can create pods/deployments in the same namespace can access the secrets ... so use RBAC to 
     cfg POLP
   - best thing is probably to use a 3rd-party secret provider like Vault. Now secrets are not stored in etcd, but in Vault.
 
 ## 105. a note about secrets!
 
+- k8s sends secrets to nodes iff a pod on that node requires it
+- kubelet stores the secret into a tmpfs so the secret is not written to disk
+- once the pod using the secret is deleted, kubelet deletes its local copy of the secret too
+- Read about the [protections](https://kubernetes.io/docs/concepts/configuration/secret/#protections) and [risks](https://kubernetes.io/docs/concepts/configuration/secret/#risks) of using secrets [here](https://kubernetes.io/docs/concepts/configuration/secret/#risks).
+
+## 106. additional resource
+
+- [Secret Store CSI Driver Tutorial | Kubernetes Secrets | AWS Secrets Manager | KodeKloud](https://www.youtube.com/watch?v=MTnQW9MxnRI) <-- 31 minute video ... <-- looks like lots of other good stuff to watch there ...
+
+## 107. practice test - secrets
+
+## 108. solution - secrets
+
+## 109. demo: encrypting secret data at rest 
