@@ -142,5 +142,18 @@ spec:
     #     args: ["5000"]
 ```
 
+- if you have the following in a Dockerfile:
+```
+...
+ENTRYPOINT ["python", "app.py"]
+CMD ["--color", "red"]
+...
+```
+and you have a pod defn file using that image with the following: [.spec.containers[N].command]: `command: ["--color", "green"]`
+  - the command run when the ctr starts will _NOT_ be `python app.py --color red`, it will be `--color green`
+    because what is in [.spec.containers[N].command] overrides what is in Dockerfile.ENTRYPOINT.
+- `k run <pod-name> --image=<image-name> -- <arg1> <arg2>`
+- `k run <pod-name> --image=<image-name> --command -- <cmd> <arg>`
+
 ## 100. configure environment variables in applications
 
