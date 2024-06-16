@@ -253,4 +253,33 @@ spec:
 
 ## 108. solution - secrets
 
-## 109. demo: encrypting secret data at rest 
+## 109. demo: [encrypting secret data at rest](https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/) 
+
+- 1. create a secret:
+  - `k create secret generic my-secret --from-literal=key1=supersecret` <-- the value for key1 will be base64 encoded, but not encrypted
+  - the point of this demo though is actually how it is stored in etcd. you can see what is in etcd using `etcdctl`:
+    - `ETCDCTL_API=3 etcdctl --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key get /registry/secrest/default/secret1 | hexdump -C`
+  - if no `etcdctl` command, try: `apt-get install etcd-client` OR just ssh into the etcd pod and run etcdctl from there
+![etcdctl-1](etcdctl-1.png)
+  - as you can see, the data are stored in etcd unencrypted, so anyone with access can see it.
+- 2. we want to fix that, so first thing is to check if encryption at rest is already enabled or not:
+  - the etcd server option is: "encryption-provider-config", so: `ps aux | grep kube-api | grep "encryption-provider-config"`
+  - OR - if k8s was set up using kubeadm, `vi /etc/kubernetes/manifests/kube-apiserver.yaml` and grep / look for the option
+  - if it is not there, create an `EncryptionConfiguration` and pass it in as that option
+- the order in an `EncryptionConfiguration` matters: first match in providers list wins. 
+- 3. follow the example [here](https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/#write-an-encryption-configuration-file).
+  - ☝️ notice here _again_, you need to put a base64 encryption _key_ in the yaml defn ... which is again insecure:
+    - [.resources.providers.[0].keys.[0].secret] 
+- 4. add this line to the kube-apiserver config (`/etc/kubernetes/manifests/kube-apiserver.yaml`):
+  - `- --encryption-provider-config=/etc/kubernetes/enc/<EncryptionConfiguration-filename>.yaml`
+  - once you save the file, kube-apiserver will restart ... you can check on it with `crictl pods`
+- 5. once the kube-apiserver comes back up, repeat step 1 and see if it is encrypted or not.
+  - as usual, old stuff won't be back-filled, so if you want to encrypt everything that already existed before, try this:
+    - `k get secrets --all-namespaces -o jason | kubectl replace -f -`
+    - now all secrets have server side encryption applied
+
+## 110. scale applications
+
+- see deployments and rolling updates section (~ 2.32)
+
+## 111. multi-container pods
