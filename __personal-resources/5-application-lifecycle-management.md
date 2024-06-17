@@ -322,5 +322,44 @@ spec:
   - 2. adapter (will learn about this in CKAD course)
   - 3. ambassador (will learn about this in CKAD course)
 
-## 115. initcontainers
+## 115. [initcontainers](https://kubernetes.io/docs/concepts/workloads/pods/init-containers/)
 
+- use cases:
+  - need a process that completes in a container, like:
+    - pull code from a repo that is needed by / will be used by the main webapp
+    - wait for an external service / db to be up before webapp starts
+    for these things, we can use an `initContainer`
+- it goes in a pod spec in the [.spec.initcontainers] section:
+```
+...
+spec:
+  containers:
+  ...
+  initcontainers:
+  - name: init-myservice
+    image: busybox
+    command: ['sh', '-c', 'git clone <some-repo> ; done;']
+  ...
+...
+```
+- when a pod is first created, the initcontainer is run to completion before the 
+  "real" containers housing the app starts
+- you can have N initContainers (think filter chain)
+
+## 116. practice test - init containers
+
+## 117. solution - init containers
+
+- `k logs <pod-name>` will tell you the pod is down, but if we want to get the log from an individual ctr on the pod:
+  - `k logs <pod-name> -c <[init-]container-name>`
+
+## 118. self healing applications
+
+- k8s supports self-healing apps thru:
+  - `ReplicaSet`
+  - `ReplicationController`
+    - make sure a pod is auto recreated when pod crashes ... make sure enough replicas are always running 
+  - liveness probes (will learn about this in CKAD course)
+  - readiness probes (will learn about this in CKAD course)
+
+## 119. if you like it, share it!
