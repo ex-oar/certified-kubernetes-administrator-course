@@ -283,3 +283,44 @@ spec:
 - see deployments and rolling updates section (~ 2.32)
 
 ## 111. multi-container pods
+
+- breaking up the monolith --> lots of small things we can mod and scale independently, without having to mess with the big app
+- but ... sometimes we need two things to work together, like: [log agent + web server] ... we need them paired, but not in same code base (re-wiring the monolith!)
+- in this case, we have multi-ctr pods. they share netwrk, storage, and live and die and scale together
+
+## 112. practice test - multi-container pods
+
+- `kubectl -n elastic-stack logs kibana`
+![kibana-1](kibana-1.png)
+![kibana-2](kibana-2.png)
+- [k8s ckad - kibana dashboard video](https://bit.ly/2EXYdHf)
+
+## 113. solution - multi-container pods
+
+- elastic stack is collecting metrics - kibana will create dashboards using those
+- to see pod logs, 
+  - could ssh into ctr on the pod: `k -n elastic-stack exec -it app -- cat /log/app.log`, or 
+  - `k logs app -n elastic-stack` 
+- `k edit pod app -n elastic-stack`
+  - add sidecar for logging:
+    - + [.spec.containers.[N]]:
+```
+# this is the little orange sidecar on our app in the picture above ...
+# all it does is read the logs and pass them thru to central elasticsearch
+- image: kodekloud/filebeat-configured
+  name: sidecar
+  volumeMounts:
+  - mountPath: /var/log/event-simulator
+    name: log-volume
+```
+- now `k replace --force -f /tmp/blah.yaml`
+
+## 114. multi-container pods design patterns
+
+- 3 common patterns:
+  - 1. sidecar (e.g., logging as per last section)
+  - 2. adapter (will learn about this in CKAD course)
+  - 3. ambassador (will learn about this in CKAD course)
+
+## 115. initcontainers
+
