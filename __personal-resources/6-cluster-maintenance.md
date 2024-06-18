@@ -122,4 +122,42 @@
 
 ## 130. solution - cluster upgrade
 
+## 131. backup and restore methods
+
+- _what_ should we back up? (are these options exclusive? i.e., we either backup resource cfgs, OR we backup etcd?)
+  - well, what have we created?
+    - resource cfgs (pod, svc, etc. defn files)
+      - but we may have created these imperatively or declaratively
+        - if we did it imperatively, now we have to export those to yamls, OR do this to get everything,
+          whether it was created imperatively or declaratively:
+            - `k get all --all-namespaces -o yaml > all-deploy-services.yaml`
+        - so best practice is ofc to do everything declaratively, and store in GitHub
+          - if you have this, and you lose your cluster, you can at least redeploy your entire app, just from these files
+    - etcd has all cluster-related info, like state
+      - so we need to back up etcd server itself ... which we can do by cfg-ing a backup tool to backup 
+        the etcd configuration files dir (ex: `--data-dir=/var/lib/etcd`)
+      - etcd also has a built in snapshot: `ETCDCTL_API=3 etcdctl snapshot save snapshot.db`
+      - `ETCDCTL_API=3 etcdctl snapshot status snapshot.db`
+      - now, to restore an etcd from this snapshot:
+        - stop kube-apiserver, because cycling it will require etcd to cycle: `service kube-apiserver stop`
+        - restore: `ETCDCTL_API=3 etcdctl snapshot restore snapshot.db --data-dir=/var/lib/etcd-from-backup`
+          - etcd will start everything over so nobody can accidentally join the existing cluster
+          - now, re-cfg the etcd configuration files dir (ex: `--data-dir=/var/lib/etcd-from-backup`)
+          - now, restart things:
+            - `systemctl daemon-reload`
+            - `service etcd restart`
+            - `service kube-apiserver start`
+      - ☝️ for all those etcd commands, if TLS is enabled, it's mandatory to also include the following flags:
+        - `--endpoints=https://127.0.0.1:2379`
+        - `--cacert=/etc/etcd/ca.crt`
+        - `--cert=/etc/etcd/etcd-server.crt`
+        - `--key=/etc/etcd/etcd-server.key`
+    - do we have persistent volumes?
+- you can alternatively use things like velero to do backups thru the k8s api
+- if you are using a CSP to manage this, you likely won't anyway have access to etcd, so you'll have to back up via
+  resource cfgs (yaml files).
+
+## 132. working with etcdctl
+
+## 133. practice test - backup and restore methods
 
