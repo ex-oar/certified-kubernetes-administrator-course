@@ -161,3 +161,19 @@
 
 ## 133. practice test - backup and restore methods
 
+- /etc/kubernetes/pki/etcd/server.crt
+- /etc/kubernetes/pki/etcd/ca.crt
+- ETCDCTL_API=3 etcdctl snapshot save /opt/snapshot-pre-boot.db
+
+## 134. solution - backup and restore
+
+## 136. certification exam tip!
+ 
+- on the exam, it will not give continuous, immediate feedback as in this course. 
+  start checking everything yourself so you get in the habit of knowing it is right before moving on.
+
+## 137. references
+
+- [Backing up an etcd cluster](https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/#backing-up-an-etcd-cluster)
+- [etcd recovery](https://github.com/etcd-io/website/blob/main/content/en/docs/v3.5/op-guide/recovery.md)
+- [Disaster Recovery for your Kubernetes Clusters](https://www.youtube.com/watch?v=qRPNuT080Hk) <-- made by velero 
