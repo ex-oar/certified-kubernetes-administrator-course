@@ -167,12 +167,88 @@
 
 ## 134. solution - backup and restore
 
-## 136. certification exam tip!
+- `k describe pod <etcd-pod-name> | grep -i image` is another way to get etcd version
+- `k describe pod <etcd-pod-name> | grep -i listen-client` to see what addy to reach etcd cluster from controlplane node
+- for the cert files, etc: `k describe pod <etcd-pod-name> | grep -i cert-file` 
+- remember from the name, it seems to be a static pod, and static pod defns are located in `/etc/kubernetes/manifests`
+  in this case `/etc/kubernetes/manifests/etcd.yaml`
+  - in [.spec.volumes.name] you can see "etcd-certs", so it's pointing out where the certs are for etcd
+    - in [.spec.containers.volumeMounts.mountPath] you can see the same ...
+      - this is telling us that the files from the controlplane node will be mounted to the path on the ctrs.
+  - same thing with "etcd-data"
+- don't forget to set the ETCDCTL_API=3 during the test!
+  - if you don't, you won't even see help menu
+- full command:
+```
+ETCDCTL_API=3 etcdctl snapshot save 
+                                       --endpoints=127.0.0.1:2379 
+                                       --cacert=/etc/kubernetes/pki/etcd/ca.crt
+                                       --cert=/etc/kubernetes/pki/etcd/server.crt
+                                       --key=/etc/kubernetes/pki/etcd/server.key
+                                       /opt/snapshot-pre-boot.db
+```
+- now restore it. whereas when we took the backup, we needed to contact the server, so we needed all that info ^^,
+  here's we're just restoring this file locally - not comms with etcd server:
+```
+ETCDCTL_API=3 etcdctl snapshot restore 
+                                       --data-dir /var/lib/<some-new-dir>
+                                       /opt/snapshot-pre-boot.db
+```
+- now edit the etcd cfg to point to where the backed up data are:
+  - `vi /etc/kubernetes/manifests/etcd.yaml` change [.spec.volumes.hostPath.path] to where the backup is
+    - now etcd will restart because this file was changed, and it'll look in where our restored backup file is 
+      instead of where it was backed up from, as its data. so we effectively replaced the data in etcd.
+- check that it is back up and running with a few kubectl commands ... if no response, it is not running
+  - in that case, delete the etcd pod again and it'll come back, then try again with the kubectl commands
+
+## 135. practice test backup and restore methods 2
+
+- which clusters do i have access to?
+  - `vi ~/.kube/config` look for "-cluster", OR
+  - `k config get-clusters`, OR
+  - `k config view`
+- how many nodes are on just _one_ of those clusters?
+  - switch context and check: 
+    - `k config use-context cluster1`
+    - `k get nodes --no-headers | wc -l`
+- what is "stacked"/"external" etcd? mult. questions on this, but was never referenced in video ...
+- `ssh etcd-server` 
+
+## 136. solution: backup and restore 2
+
+- "stacked" seems to mean it is running off the control plane node itself ...
+  - another way to tell is if we do a describe on the apiserver and it points to localhost, then it is stacked etcd:
+    - `k describe pod <kube-apiserver-pod-name> -n kube-system | grep etcd-servers`
+- "external" means it is not running on the control plane ... you could check for the pod, not there,
+  you could check for the cfg file in /manifests dir, not there ... only way to tell now is 
+  that k describe kube-apiserver as above and check the ip addy of the etcd server
+- can also get info about etcd server thru the process: `ps -ef | grep -i etcd` ... will show data dir, etc.
+- to figure out how many nodes are part of the etcd cluster:
+```
+ETCDCTL_API=3 etcdctl 
+                      --endpoints=... 
+                      --cacert=/path/to/ca.crt
+                      --cert=/path/to/server.crt
+                      --key=/path/to/server.key
+                      member list
+
+# all those vars / options come from grepping the etcd process.
+```
+- make sure backups are owned by `etcd:etcd`
+- `vi /etcd/systemd/system/etcd.service`
+- `systemctl daemon-reload`
+- `systemctl restart etcd`
+- `systemctl status etcd`
+- last thing is to restart any other control plane components to ensure they are not using stale data:
+  - `k delete pods <controller-manager-name> ... <scheduler>`
+- now also on control plane node `systemctl restart kubelet`
+
+## 137. certification exam tip!
  
 - on the exam, it will not give continuous, immediate feedback as in this course. 
   start checking everything yourself so you get in the habit of knowing it is right before moving on.
 
-## 137. references
+## 138. references
 
 - [Backing up an etcd cluster](https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/#backing-up-an-etcd-cluster)
 - [etcd recovery](https://github.com/etcd-io/website/blob/main/content/en/docs/v3.5/op-guide/recovery.md)
